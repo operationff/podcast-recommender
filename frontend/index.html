@@ -126,10 +126,18 @@
         const mailtoLink = document.getElementById('mailtoLink');
 
         function showPitchModal(hostEmail, pitchMessage) {
-            hostEmailInput.value = hostEmail;
-            pitchMessageTextarea.value = pitchMessage;
-            mailtoLink.href = `mailto:${hostEmail}?subject=Interested in being a guest on your podcast&body=${encodeURIComponent(pitchMessage)}`;
-            modal.style.display = 'block';
+            try {
+                if (!hostEmail || !pitchMessage) {
+                    console.error('Missing host email or pitch message');
+                    return;
+                }
+                hostEmailInput.value = hostEmail || '';
+                pitchMessageTextarea.value = pitchMessage || '';
+                mailtoLink.href = `mailto:${encodeURIComponent(hostEmail)}?subject=${encodeURIComponent('Interested in being a guest on your podcast')}&body=${encodeURIComponent(pitchMessage)}`;
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Error showing pitch modal:', error);
+            }
         }
 
         closeBtn.onclick = function() {
@@ -142,13 +150,26 @@
             }
         }
 
-        copyPitchBtn.onclick = function() {
-            pitchMessageTextarea.select();
-            document.execCommand('copy');
-            this.textContent = 'Copied!';
-            setTimeout(() => {
-                this.textContent = 'Copy Message';
-            }, 2000);
+        copyPitchBtn.onclick = async function() {
+            try {
+                const text = pitchMessageTextarea.value;
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    pitchMessageTextarea.select();
+                    document.execCommand('copy');
+                }
+                this.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.textContent = 'Copy Message';
+                }, 2000);
+            } catch (error) {
+                console.error('Error copying text:', error);
+                this.textContent = 'Copy failed';
+                setTimeout(() => {
+                    this.textContent = 'Copy Message';
+                }, 2000);
+            }
         }
 
         // Configure API endpoint based on environment
@@ -305,8 +326,8 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                                             </svg>
                                         </a>
-                                        ${wantsToBeFeatured ? `
-                                            <button onclick="showPitchModal('${podcast.host_email}', ${JSON.stringify(podcast.pitch_message).replace(/'/g, '\u0027')})" 
+                                        ${wantsToBeFeatured && podcast.host_email && podcast.pitch_message ? `
+                                            <button onclick="showPitchModal(${JSON.stringify(podcast.host_email)}, ${JSON.stringify(podcast.pitch_message)})" 
                                                 class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 flex items-center">
                                                 <span>Pitch as Guest</span>
                                                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
