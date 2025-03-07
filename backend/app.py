@@ -43,38 +43,58 @@ def get_podcast_recommendations(linkedin_url, wants_to_be_featured):
         scored_podcasts = []
         for podcast in all_podcasts:
             score = 0
+            reasons = []
             
             # Score based on keywords from profile
+            matching_keywords = []
             for keyword in analysis['keywords']:
-                if keyword.lower() in podcast['title'].lower():
+                keyword_lower = keyword.lower()
+                if keyword_lower in podcast['title'].lower():
                     score += 3
-                if keyword.lower() in podcast['description'].lower():
+                    matching_keywords.append(keyword)
+                elif keyword_lower in podcast['description'].lower():
                     score += 2
+                    matching_keywords.append(keyword)
+            if matching_keywords:
+                reasons.append(f"Matches your expertise in: {', '.join(matching_keywords)}")
             
             # Score based on categories
+            matching_categories = []
             for category in analysis['categories']:
-                if category.lower() in podcast['title'].lower():
+                category_lower = category.lower()
+                if category_lower in podcast['title'].lower():
                     score += 3
-                if category.lower() in podcast['description'].lower():
+                    matching_categories.append(category)
+                elif category_lower in podcast['description'].lower():
                     score += 2
-                if any(category.lower() in pc.lower() for pc in podcast['categories']):
+                    matching_categories.append(category)
+                elif any(category_lower in pc.lower() for pc in podcast['categories']):
                     score += 2
+                    matching_categories.append(category)
+            if matching_categories:
+                reasons.append(f"Aligns with your interests in: {', '.join(set(matching_categories))}")
             
             # Add bonus points for featured opportunities if user wants to be featured
             if wants_to_be_featured:
+                matching_opportunities = []
                 for opportunity in analysis['featured_opportunities']:
                     if opportunity.lower() in podcast['title'].lower() or \
                        opportunity.lower() in podcast['description'].lower():
                         score += 4
+                        matching_opportunities.append(opportunity)
+                if matching_opportunities:
+                    reasons.append("Perfect for guest appearances based on your profile")
             
             # Add bonus points for top-rated and featured podcasts
             if 'Top Rated' in podcast['categories']:
                 score += 3
+                reasons.append("Highly rated by listeners")
             if 'Featured' in podcast['categories']:
                 score += 2
+                reasons.append("Featured podcast")
             
             if score > 0:  # Only include podcasts with some relevance
-                scored_podcasts.append((score, podcast))
+                scored_podcasts.append((score, podcast, reasons))
         
         # Sort by score and get top 10
         scored_podcasts.sort(key=lambda x: x[0], reverse=True)
@@ -84,9 +104,10 @@ def get_podcast_recommendations(linkedin_url, wants_to_be_featured):
                 'description': p['description'],
                 'image': p['image'],
                 'website': p['website'],
-                'categories': p['categories']
+                'categories': p['categories'],
+                'reasons': reasons
             }
-            for _, p in scored_podcasts[:10]
+            for _, p, reasons in scored_podcasts[:10]
         ]
         
         return recommendations
