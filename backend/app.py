@@ -29,6 +29,24 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
+def generate_pitch_message(profile_data, podcast):
+    """Generate a personalized pitch message for the podcast host."""
+    skills_str = ', '.join(profile_data['skills'][:3])  # Top 3 skills
+    interests_str = ', '.join(profile_data['interests'][:2])  # Top 2 interests
+    
+    message = f"""Hi {podcast['host_name']},
+
+I hope this message finds you well! I'm a regular listener of {podcast['title']} and really appreciate your insights on {', '.join(podcast['categories'][:2])}.
+
+I'm reaching out because I believe I could bring valuable insights to your audience. With expertise in {skills_str} and a passion for {interests_str}, I could share unique perspectives on {profile_data['summary'][:100]}...
+
+I'd love to explore the possibility of being a guest on your show. Would you be open to a conversation about potential collaboration?
+
+Best regards,
+{profile_data['name']}"""
+    
+    return message
+
 def get_podcast_recommendations(linkedin_url, wants_to_be_featured):
     """Get podcast recommendations based on LinkedIn profile."""
     try:
@@ -105,7 +123,10 @@ def get_podcast_recommendations(linkedin_url, wants_to_be_featured):
                 'image': p['image'],
                 'website': p['website'],
                 'categories': p['categories'],
-                'reasons': reasons
+                'reasons': reasons,
+                'host_name': p.get('host_name', 'Host'),  # Default to 'Host' if not specified
+                'host_email': p.get('host_email', ''),
+                'pitch_message': generate_pitch_message(profile_data, p) if wants_to_be_featured else ''
             }
             for _, p, reasons in scored_podcasts[:10]
         ]
