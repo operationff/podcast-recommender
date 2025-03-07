@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast Recommender</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .interest-tag {
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8">Podcast Recommender</h1>
+        
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold mb-4">Get Podcast Recommendations</h2>
+            
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">LinkedIn Profile URL</label>
+                <input type="text" id="linkedinUrl" 
+                    class="w-full p-2 border rounded" 
+                    placeholder="https://www.linkedin.com/in/your-profile"
+                    autocomplete="off">
+                <p class="mt-2 text-sm text-gray-500">Enter your LinkedIn profile URL to get personalized podcast recommendations</p>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">Would you like to be featured in podcasts?</label>
+                <div class="mt-2">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="featured" value="yes" class="form-radio h-4 w-4 text-blue-600">
+                        <span class="ml-2">Yes, I'm interested in being a guest</span>
+                    </label>
+                    <label class="inline-flex items-center ml-6">
+                        <input type="radio" name="featured" value="no" class="form-radio h-4 w-4 text-blue-600" checked>
+                        <span class="ml-2">No, just show me recommendations</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="profilePreview" class="hidden mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 class="font-semibold text-lg mb-2">Profile Summary</h3>
+                <div id="profileContent" class="text-gray-600"></div>
+            </div>
+            
+            <button id="getRecommendations" 
+                class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+                Get Recommendations
+            </button>
+        </div>
+
+        <div id="recommendations" class="max-w-4xl mx-auto mt-8 grid gap-4">
+            <!-- Recommendations will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        // Configure API endpoint based on environment
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5002'
+            : 'https://podcast-recommender-api.onrender.com';
+
+        // Function to validate LinkedIn URL
+        function isValidLinkedInUrl(url) {
+            return url.match(/^https?:\/\/([\w]+\.)?linkedin\.com\/in\/[\w\-\_åàáâäãåąăćčĉęèéêëėįîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ∂ð,.']+\/?$/i);
+        }
+
+        // Handle LinkedIn URL input
+        document.getElementById('linkedinUrl').addEventListener('input', function(e) {
+            const url = this.value.trim();
+            const profilePreview = document.getElementById('profilePreview');
+            const profileContent = document.getElementById('profileContent');
+            
+            if (isValidLinkedInUrl(url)) {
+                this.classList.remove('border-red-500');
+                this.classList.add('border-green-500');
+                profilePreview.classList.remove('hidden');
+                // In a real implementation, we would fetch profile data here
+                profileContent.innerHTML = '<p class="text-gray-600">Profile data will be fetched when you click "Get Recommendations"</p>';
+            } else {
+                this.classList.remove('border-green-500');
+                this.classList.add('border-red-500');
+                profilePreview.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('getRecommendations').addEventListener('click', async function() {
+            const button = this;
+            const recommendationsDiv = document.getElementById('recommendations');
+            const linkedinUrl = document.getElementById('linkedinUrl').value.trim();
+            const wantsToBeFeatured = document.querySelector('input[name="featured"]:checked').value === 'yes';
+            
+            if (!isValidLinkedInUrl(linkedinUrl)) {
+                recommendationsDiv.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <p>Please enter a valid LinkedIn profile URL</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Show loading state
+            button.disabled = true;
+            button.innerHTML = 'Loading...';
+            recommendationsDiv.innerHTML = '<div class="text-center py-8"><p class="text-gray-600">Analyzing your LinkedIn profile and finding the best podcasts for you...</p></div>';
+            
+            const profile = {
+                linkedinUrl,
+                wantsToBeFeatured
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/recommend`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(profile)
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                if (!data.recommendations || !data.recommendations.length) {
+                    recommendationsDiv.innerHTML = `
+                        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                            <p>No podcast recommendations found for your interests.</p>
+                            <p class="mt-2">Try adding some different interests!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Update profile preview with actual data
+                const profilePreview = document.getElementById('profilePreview');
+                const profileContent = document.getElementById('profileContent');
+                
+                profilePreview.classList.remove('hidden');
+                profileContent.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Summary</h4>
+                            <p class="text-gray-600">${data.profile.summary}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Top Skills</h4>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                ${data.profile.skills.map(skill => 
+                                    `<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">${skill}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Interests</h4>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                ${data.profile.interests.map(interest => 
+                                    `<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">${interest}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        ${data.profile.featuredOpportunities.length ? `
+                            <div class="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                <h4 class="font-semibold text-yellow-800">Featured Opportunities</h4>
+                                <p class="text-sm text-yellow-600 mb-2">Based on your profile, you might be a great guest for:</p>
+                                <ul class="list-disc list-inside space-y-1 text-yellow-700">
+                                    ${data.profile.featuredOpportunities.map(opp => 
+                                        `<li>${opp}</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                // Display podcast recommendations
+                recommendationsDiv.innerHTML = `
+                    <h2 class="text-2xl font-semibold mb-4">Recommended Podcasts</h2>
+                    ${data.recommendations.map(podcast => `
+                        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+                            <div class="flex items-start">
+                                <img src="${podcast.image}" alt="${podcast.title}" class="w-24 h-24 object-cover rounded mr-4">
+                                <div class="flex-1">
+                                    <h3 class="text-xl font-semibold mb-2">${podcast.title}</h3>
+                                    <p class="text-gray-600 mb-2">${podcast.description}</p>
+                                    <div class="flex flex-wrap gap-2 mb-2">
+                                        ${podcast.categories.map(category => 
+                                            `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">${category}</span>`
+                                        ).join('')}
+                                    </div>
+                                    <div class="flex items-center">
+                                        <a href="${podcast.website}" target="_blank" 
+                                            class="text-blue-500 hover:text-blue-600">Visit Website</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+
+            } catch (error) {
+                console.error('Recommendation error:', error);
+                recommendationsDiv.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <p>Sorry, there was an error getting recommendations: ${error.message}</p>
+                        <p class="mt-2">Please try again in a moment.</p>
+                    </div>
+                `;
+            } finally {
+                // Reset button state
+                button.disabled = false;
+                button.innerHTML = 'Get Recommendations';
+            }
+        });
+    </script>
+</body>
+</html>
