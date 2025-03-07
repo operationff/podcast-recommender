@@ -1,0 +1,22 @@
+services:
+  # Backend API service
+  - type: web
+    name: podcast-recommender-api
+    env: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.9.0
+
+  # Frontend static site
+  - type: static
+    name: podcast-recommender-frontend
+    buildCommand: echo "Static site, no build needed"
+    staticPublishPath: ./frontend
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

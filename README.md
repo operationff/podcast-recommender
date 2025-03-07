@@ -40,24 +40,62 @@ The frontend is a static HTML/JavaScript application using Tailwind CSS. Simply 
 
 ## Deployment
 
-### Backend Deployment (Render.com)
-1. Create a new Web Service on Render
-2. Connect your GitHub repository
-3. Configure the service:
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `gunicorn app:app`
-   - Environment Variables:
+### Deployment with Render.com
+
+#### Option 1: Automatic Deployment (Recommended)
+1. Fork this repository to your GitHub account
+2. Sign up for a [Render.com](https://render.com) account if you haven't already
+3. Click the Deploy to Render button below:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+This will automatically:
+- Deploy the backend API service
+- Deploy the frontend static site
+- Configure all necessary environment variables
+- Set up automatic deployments on future commits
+
+#### Option 2: Manual Deployment
+If you prefer to set up the services manually:
+
+1. Backend API Service:
+   ```bash
+   # On render.com:
+   1. Create a new Web Service
+   2. Connect your GitHub repository
+   3. Use these settings:
+      - Name: podcast-recommender-api
+      - Environment: Python
+      - Build Command: cd backend && pip install -r requirements.txt
+      - Start Command: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT
+      - Environment Variables:
+        FLASK_ENV=production
+        PYTHON_VERSION=3.9.0
+   ```
+
+2. Frontend Static Site:
+   ```bash
+   # On render.com:
+   1. Create a new Static Site
+   2. Connect your GitHub repository
+   3. Use these settings:
+      - Name: podcast-recommender-frontend
+      - Build Command: (leave empty)
+      - Publish Directory: frontend
+   ```
+
+3. Configure CORS:
+   - After deployment, get your frontend URL from Render
+   - Add it to the backend's environment variables:
      ```
-     FLASK_ENV=production
-     ALLOWED_ORIGINS=https://your-frontend-domain.com
+     ALLOWED_ORIGINS=https://your-frontend-url.onrender.com
      ```
 
-### Frontend Deployment (Render.com or any static hosting)
-1. Create a new Static Site on Render
-2. Connect your GitHub repository
-3. Configure build settings:
-   - Publish directory: `frontend`
-   - No build command needed
+#### Post-Deployment
+- Backend API will be available at: `https://podcast-recommender-api.onrender.com`
+- Frontend will be available at: `https://podcast-recommender-frontend.onrender.com`
+- Monitor your deployments in the Render dashboard
+- Set up automatic deployments from your GitHub repository
 
 ## Architecture
 - **Backend**: Python Flask application with:
